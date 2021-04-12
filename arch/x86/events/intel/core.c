@@ -5306,23 +5306,42 @@ static void intel_pmu_check_event_constraints(struct event_constraint *event_con
 	}
 }
 
+static void intel_pmu_check_extra_regs(struct extra_reg *extra_regs)
+{
+	struct extra_reg *er;
+
+	/*
+	 * Access extra MSR may cause #GP under certain circumstances.
+	 * E.g. KVM doesn't support offcore event
+	 * Check all extra_regs here.
+	 */
+	if (!extra_regs)
+		return;
+
+	for (er = extra_regs; er->msr; er++) {
+		er->extra_msr_access = check_msr(er->msr, 0x11UL);
+		/* Disable LBR select mapping */
+		if ((er->idx == EXTRA_REG_LBR) && !er->extra_msr_access)
+			x86_pmu.lbr_sel_map = NULL;
+	}
+}
+
 __init int intel_pmu_init(void)
 {
-struct attribute **extra_skl_attr = &empty_attrs;
-struct attribute **extra_attr = &empty_attrs;
-struct attribute **td_attr    = &empty_attrs;
-struct attribute **mem_attr   = &empty_attrs;
-struct attribute **tsx_attr   = &empty_attrs;
-union cpuid10_edx edx;
-union cpuid10_eax eax;
-union cpuid10_ebx ebx;
-struct event_constraint *c;
-unsigned int unused;
-unsigned int fixed_mask;
-struct extra_reg *er;
-bool pmem = false;
-int version, i;
-char *name;
+	struct attribute **extra_skl_attr = &empty_attrs;
+	struct attribute **extra_attr = &empty_attrs;
+	struct attribute **td_attr    = &empty_attrs;
+	struct attribute **mem_attr   = &empty_attrs;
+	struct attribute **tsx_attr   = &empty_attrs;
+	union cpuid10_edx edx;
+	union cpuid10_eax eax;
+	union cpuid10_ebx ebx;
+	unsigned int fixed_mask;
+	struct extra_reg *er;
+	unsigned int unused;
+	bool pmem = false;
+	int version, i;
+	char *name;
 
 if (!cpu_has(&boot_cpu_data, X86_FEATURE_ARCH_PERFMON)) {
 	switch (boot_cpu_data.x86) {
@@ -6398,158 +6417,9 @@ case INTEL_FAM6_COMETLAKE:
 	name = "skylake";
 	break;
 
-case INTEL_FAM6_ICELAKE_X:
-case INTEL_FAM6_ICELAKE_D:
-	pmem = true;
-	fallthrough;
-case INTEL_FAM6_ICELAKE_L:
-case INTEL_FAM6_ICELAKE:
-case INTEL_FAM6_TIGERLAKE_L:
-case INTEL_FAM6_TIGERLAKE:
-case INTEL_FAM6_ROCKETLAKE:
-	x86_pmu.late_ack = true;
-	memcpy(hw_cache_event_ids, skl_hw_cache_event_ids, sizeof(hw_cache_event_ids));
-	memcpy(hw_cache_extra_regs, skl_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
-	hw_cache_event_ids[C(ITLB)][C(OP_READ)][C(RESULT_ACCESS)] = -1;
-	intel_pmu_lbr_init_skl();
+	intel_pmu_check_extra_regs(x86_pmu.extra_regs);
 
-	x86_pmu.event_constraints = intel_icl_event_constraints;
-	x86_pmu.pebs_constraints = intel_icl_pebs_event_constraints;
-	x86_pmu.extra_regs = intel_icl_extra_regs;
-	x86_pmu.pebs_aliases = NULL;
-	x86_pmu.pebs_prec_dist = true;
-	x86_pmu.flags |= PMU_FL_HAS_RSP_1;
-	x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
-
-	x86_pmu.hw_config = hsw_hw_config;
-	x86_pmu.get_event_constraints = icl_get_event_constraints;
-	extra_attr = boot_cpu_has(X86_FEATURE_RTM) ?
-		hsw_format_attr : nhm_format_attr;
-	extra_skl_attr = skl_format_attr;
-	mem_attr = icl_events_attrs;
-	td_attr = icl_td_events_attrs;
-	tsx_attr = icl_tsx_events_attrs;
-	x86_pmu.rtm_abort_event = X86_CONFIG(.event=0xc9, .umask=0x04);
-	x86_pmu.lbr_pt_coexist = true;
-	intel_pmu_pebs_data_source_skl(pmem);
-	x86_pmu.num_topdown_events = 4;
-	x86_pmu.update_topdown_event = icl_update_topdown_event;
-	x86_pmu.set_topdown_event_period = icl_set_topdown_event_period;
-	pr_cont("Icelake events, ");
-	name = "icelake";
-	break;
-
-case INTEL_FAM6_SAPPHIRERAPIDS_X:
-	pmem = true;
-	x86_pmu.late_ack = true;
-	memcpy(hw_cache_event_ids, spr_hw_cache_event_ids, sizeof(hw_cache_event_ids));
-	memcpy(hw_cache_extra_regs, spr_hw_cache_extra_regs, sizeof(hw_cache_extra_regs));
-
-	x86_pmu.event_constraints = intel_spr_event_constraints;
-	x86_pmu.pebs_constraints = intel_spr_pebs_event_constraints;
-	x86_pmu.extra_regs = intel_spr_extra_regs;
-	x86_pmu.limit_period = spr_limit_period;
-	x86_pmu.pebs_aliases = NULL;
-	x86_pmu.pebs_prec_dist = true;
-	x86_pmu.pebs_block = true;
-	x86_pmu.flags |= PMU_FL_HAS_RSP_1;
-	x86_pmu.flags |= PMU_FL_NO_HT_SHARING;
-	x86_pmu.flags |= PMU_FL_PEBS_ALL;
-	x86_pmu.flags |= PMU_FL_INSTR_LATENCY;
-	x86_pmu.flags |= PMU_FL_MEM_LOADS_AUX;
-
-	x86_pmu.hw_config = hsw_hw_config;
-	x86_pmu.get_event_constraints = spr_get_event_constraints;
-	extra_attr = boot_cpu_has(X86_FEATURE_RTM) ?
-		hsw_format_attr : nhm_format_attr;
-	extra_skl_attr = skl_format_attr;
-	mem_attr = spr_events_attrs;
-	td_attr = spr_td_events_attrs;
-	tsx_attr = spr_tsx_events_attrs;
-	x86_pmu.rtm_abort_event = X86_CONFIG(.event=0xc9, .umask=0x04);
-	x86_pmu.lbr_pt_coexist = true;
-	intel_pmu_pebs_data_source_skl(pmem);
-	x86_pmu.num_topdown_events = 8;
-	x86_pmu.update_topdown_event = icl_update_topdown_event;
-	x86_pmu.set_topdown_event_period = icl_set_topdown_event_period;
-	pr_cont("Sapphire Rapids events, ");
-	name = "sapphire_rapids";
-	break;
-
-default:
-	switch (x86_pmu.version) {
-	case 1:
-		x86_pmu.event_constraints = intel_v1_event_constraints;
-		pr_cont("generic architected perfmon v1, ");
-		name = "generic_arch_v1";
-		break;
-	default:
-		/*
-		 * default constraints for v2 and up
-		 */
-		x86_pmu.event_constraints = intel_gen_event_constraints;
-		pr_cont("generic architected perfmon, ");
-		name = "generic_arch_v2+";
-		break;
-	}
 }
-
-snprintf(pmu_name_str, sizeof(pmu_name_str), "%s", name);
-
-
-group_events_td.attrs  = td_attr;
-group_events_mem.attrs = mem_attr;
-group_events_tsx.attrs = tsx_attr;
-group_format_extra.attrs = extra_attr;
-group_format_extra_skl.attrs = extra_skl_attr;
-
-x86_pmu.attr_update = attr_update;
-
-if (x86_pmu.num_counters > INTEL_PMC_MAX_GENERIC) {
-	WARN(1, KERN_ERR "hw perf events %d > max(%d), clipping!",
-	     x86_pmu.num_counters, INTEL_PMC_MAX_GENERIC);
-	x86_pmu.num_counters = INTEL_PMC_MAX_GENERIC;
-}
-x86_pmu.intel_ctrl = (1ULL << x86_pmu.num_counters) - 1;
-
-if (x86_pmu.num_counters_fixed > INTEL_PMC_MAX_FIXED) {
-	WARN(1, KERN_ERR "hw perf events fixed %d > max(%d), clipping!",
-	     x86_pmu.num_counters_fixed, INTEL_PMC_MAX_FIXED);
-	x86_pmu.num_counters_fixed = INTEL_PMC_MAX_FIXED;
-}
-
-x86_pmu.intel_ctrl |=
-	((1LL << x86_pmu.num_counters_fixed)-1) << INTEL_PMC_IDX_FIXED;
-
-/* AnyThread may be deprecated on arch perfmon v5 or later */
-if (x86_pmu.intel_cap.anythread_deprecated)
-	x86_pmu.format_attrs = intel_arch_formats_attr;
-
-if (x86_pmu.event_constraints) {
-	/*
-	 * event on fixed counter2 (REF_CYCLES) only works on this
-	 * counter, so do not extend mask to generic counters
-	 */
-	for_each_event_constraint(c, x86_pmu.event_constraints) {
-		/*
-		 * Don't extend the topdown slots and metrics
-		 * events to the generic counters.
-		 */
-		if (c->idxmsk64 & INTEL_PMC_MSK_TOPDOWN) {
-			c->weight = hweight64(c->idxmsk64);
-			continue;
-		}
-
-		if (c->cmask == FIXED_EVENT_FLAGS
-		    && c->idxmsk64 != INTEL_PMC_MSK_FIXED_REF_CYCLES) {
-			c->idxmsk64 |= (1ULL << x86_pmu.num_counters) - 1;
-		}
-		c->idxmsk64 &=
-			~(~0ULL << (INTEL_PMC_IDX_FIXED + x86_pmu.num_counters_fixed));
-		c->weight = hweight64(c->idxmsk64);
-	}
-}
-
 /*
  * Access LBR MSR may cause #GP under certain circumstances.
  * E.g. KVM doesn't support LBR MSR

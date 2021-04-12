@@ -1994,6 +1994,8 @@ static void _x86_pmu_read(struct perf_event *event)
 }
 
 
+
+
 void x86_pmu_show_pmu_cap(int num_counters, int num_counters_fixed,
 			  u64 intel_ctrl)
 {
@@ -2008,7 +2010,7 @@ void x86_pmu_show_pmu_cap(int num_counters, int num_counters_fixed,
 	pr_info("... event mask:             %016Lx\n", intel_ctrl);
 }
 
-/*
+ /*
  * The generic code is not hybrid friendly. The hybrid_pmu->pmu
  * of the first registered PMU is unconditionally assigned to
  * each possible cpuctx->ctx.pmu.
@@ -2032,6 +2034,7 @@ perf_guest_get_msrs_nop(int *nr)
 
 
 }
+
 
 static int __init init_hw_perf_events(void)
 {
@@ -2093,11 +2096,16 @@ static int __init init_hw_perf_events(void)
 
 	pmu.attr_update = x86_pmu.attr_update;
 
+<<<<<<< HEAD
 	if (!is_hybrid()) {
 		x86_pmu_show_pmu_cap(x86_pmu.num_counters,
 				     x86_pmu.num_counters_fixed,
 				     x86_pmu.intel_ctrl);
 	}
+=======
+	x86_pmu_show_pmu_cap(x86_pmu.num_counters, x86_pmu.num_counters_fixed,
+			     x86_pmu.intel_ctrl);
+>>>>>>> e11c1a7eb302... perf/x86: Factor out x86_pmu_show_pmu_cap
 
 	if (!x86_pmu.read)
 		x86_pmu.read = _x86_pmu_read;

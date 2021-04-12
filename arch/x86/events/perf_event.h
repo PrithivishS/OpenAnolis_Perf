@@ -1127,6 +1127,7 @@ int x86_pmu_handle_irq(struct pt_regs *regs);
 void x86_pmu_show_pmu_cap(int num_counters, int num_counters_fixed,
 			  u64 intel_ctrl);
 
+
 void x86_pmu_update_cpu_context(struct pmu *pmu, int cpu);
 
 extern struct event_constraint emptyconstraint;

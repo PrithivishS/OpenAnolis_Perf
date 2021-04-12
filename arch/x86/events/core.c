@@ -2030,6 +2030,7 @@ perf_guest_get_msrs_nop(int *nr)
 	*nr = 0;
 	return NULL;
 
+
 }
 
 static int __init init_hw_perf_events(void)

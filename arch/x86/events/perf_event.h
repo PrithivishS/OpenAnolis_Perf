@@ -699,6 +699,7 @@ enum hybrid_pmu_type {
 	hybrid_big_small	= hybrid_big | hybrid_small,
 };
 
+
 #define X86_HYBRID_PMU_ATOM_IDX		0
 #define X86_HYBRID_PMU_CORE_IDX		1
 

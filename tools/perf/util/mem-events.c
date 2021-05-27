@@ -28,7 +28,15 @@ struct perf_mem_event perf_mem_events[PERF_MEM_EVENTS__MAX] = {
 static char mem_loads_name[100];
 static bool mem_loads_name__init;
 
-char * __weak perf_mem_events__name(int i)
+struct perf_mem_event * __weak perf_mem_events__ptr(int i)
+{
+	if (i >= PERF_MEM_EVENTS__MAX)
+		return NULL;
+
+	return &perf_mem_events[i];
+}
+
+char * __weak perf_mem_events__name(int i, char *pmu_name  __maybe_unused)
 {
 	if (i == PERF_MEM_EVENTS__LOAD) {
 		if (!mem_loads_name__init) {
@@ -113,7 +121,7 @@ void perf_mem_events__list(void)
 		fprintf(stderr, "%-13s%-*s%s\n",
 			e->tag,
 			verbose > 0 ? 25 : 0,
-			verbose > 0 ? perf_mem_events__name(j) : "",
+			verbose > 0 ? perf_mem_events__name(j, NULL) : "",
 			e->supported ? ": available" : "");
 	}
 }

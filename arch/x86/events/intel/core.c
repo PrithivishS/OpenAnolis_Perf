@@ -6465,6 +6465,8 @@ case INTEL_FAM6_COMETLAKE:
 	}
 
 	if (x86_pmu.lbr_nr) {
+		intel_pmu_lbr_init();
+
 		pr_cont("%d-deep LBR, ", x86_pmu.lbr_nr);
 
 		/* only support branch_stack snapshot for perfmon >= v2 */

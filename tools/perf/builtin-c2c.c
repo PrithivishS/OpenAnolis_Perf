@@ -2896,8 +2896,21 @@ static int perf_c2c__record(int argc, const char **argv)
 	rec_argv[i++] = "record";
 
 	if (!event_set) {
-		perf_mem_events[PERF_MEM_EVENTS__LOAD].record  = true;
-		perf_mem_events[PERF_MEM_EVENTS__STORE].record = true;
+		e = perf_mem_events__ptr(PERF_MEM_EVENTS__LOAD_STORE);
+		/*
+		 * The load and store operations are required, use the event
+		 * PERF_MEM_EVENTS__LOAD_STORE if it is supported.
+		 */
+		if (e->tag) {
+			e->record = true;
+			rec_argv[i++] = "-W";
+		} else {
+			e = perf_mem_events__ptr(PERF_MEM_EVENTS__LOAD);
+			e->record = true;
+
+			e = perf_mem_events__ptr(PERF_MEM_EVENTS__STORE);
+			e->record = true;
+		}
 	}
 
 	if (perf_mem_events[PERF_MEM_EVENTS__LOAD].record)

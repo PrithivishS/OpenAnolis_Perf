@@ -89,8 +89,20 @@ static int __cmd_record(int argc, const char **argv, struct perf_mem *mem)
 	if (mem->operation & MEM_OPERATION_LOAD)
 		perf_mem_events[PERF_MEM_EVENTS__LOAD].record = true;
 
-	if (mem->operation & MEM_OPERATION_STORE)
-		perf_mem_events[PERF_MEM_EVENTS__STORE].record = true;
+	/*
+	 * The load and store operations are required, use the event
+	 * PERF_MEM_EVENTS__LOAD_STORE if it is supported.
+	 */
+	if (e->tag &&
+	    (mem->operation & MEM_OPERATION_LOAD) &&
+	    (mem->operation & MEM_OPERATION_STORE)) {
+		e->record = true;
+		rec_argv[i++] = "-W";
+	} else {
+		if (mem->operation & MEM_OPERATION_LOAD) {
+			e = perf_mem_events__ptr(PERF_MEM_EVENTS__LOAD);
+			e->record = true;
+		}
 
 	if (perf_mem_events[PERF_MEM_EVENTS__LOAD].record)
 		rec_argv[i++] = "-W";

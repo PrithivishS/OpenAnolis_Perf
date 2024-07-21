@@ -148,13 +148,16 @@ extern void __static_call_update(struct static_call_key *key, void *tramp, void 
 extern int static_call_mod_init(struct module *mod);
 extern int static_call_text_reserved(void *start, void *end);
 
-#define DEFINE_STATIC_CALL(name, _func)					\
+extern long __static_call_return0(void);
+
+#define __DEFINE_STATIC_CALL(name, _func, _func_init)			\
 	DECLARE_STATIC_CALL(name, _func);				\
 	struct static_call_key STATIC_CALL_KEY(name) = {		\
-		.func = _func,						\
+		.func = _func_init,					\
 		.type = 1,						\
 	};								\
-	ARCH_DEFINE_STATIC_CALL_TRAMP(name, _func)
+	ARCH_DEFINE_STATIC_CALL_TRAMP(name, _func_init)
+
 
 #define DEFINE_STATIC_CALL_NULL(name, _func)				\
 	DECLARE_STATIC_CALL(name, _func);				\
@@ -163,6 +166,13 @@ extern int static_call_text_reserved(void *start, void *end);
 		.type = 1,						\
 	};								\
 	ARCH_DEFINE_STATIC_CALL_NULL_TRAMP(name)
+#define DEFINE_STATIC_CALL_RET0(name, _func)				\
+	DECLARE_STATIC_CALL(name, _func);				\
+	struct static_call_key STATIC_CALL_KEY(name) = {		\
+		.func = __static_call_return0,				\
+		.type = 1,						\
+	};								\
+	ARCH_DEFINE_STATIC_CALL_RET0_TRAMP(name)
 
 #define static_call_cond(name)	(void)__static_call(name)
 
@@ -189,12 +199,12 @@ struct static_call_key {
 	void *func;
 };
 
-#define DEFINE_STATIC_CALL(name, _func)					\
+#define __DEFINE_STATIC_CALL(name, _func, _func_init)			\
 	DECLARE_STATIC_CALL(name, _func);				\
 	struct static_call_key STATIC_CALL_KEY(name) = {		\
-		.func = _func,						\
+		.func = _func_init,					\
 	};								\
-	ARCH_DEFINE_STATIC_CALL_TRAMP(name, _func)
+	ARCH_DEFINE_STATIC_CALL_TRAMP(name, _func_init)
 
 #define DEFINE_STATIC_CALL_NULL(name, _func)				\
 	DECLARE_STATIC_CALL(name, _func);				\
@@ -202,6 +212,14 @@ struct static_call_key {
 		.func = NULL,						\
 	};								\
 	ARCH_DEFINE_STATIC_CALL_NULL_TRAMP(name)
+
+#define DEFINE_STATIC_CALL_RET0(name, _func)				\
+	DECLARE_STATIC_CALL(name, _func);				\
+	struct static_call_key STATIC_CALL_KEY(name) = {		\
+		.func = __static_call_return0,				\
+	};								\
+	ARCH_DEFINE_STATIC_CALL_RET0_TRAMP(name)
+
 
 #define static_call_cond(name)	(void)__static_call(name)
 
@@ -236,14 +254,19 @@ static inline int static_call_text_reserved(void *start, void *end)
 
 static inline int static_call_init(void) { return 0; }
 
+static inline long __static_call_return0(void)
+{
+	return 0;
+}
+
 struct static_call_key {
 	void *func;
 };
 
-#define DEFINE_STATIC_CALL(name, _func)					\
+#define __DEFINE_STATIC_CALL(name, _func, _func_init)			\
 	DECLARE_STATIC_CALL(name, _func);				\
 	struct static_call_key STATIC_CALL_KEY(name) = {		\
-		.func = _func,						\
+		.func = _func_init,					\
 	}
 
 #define DEFINE_STATIC_CALL_NULL(name, _func)				\
@@ -251,6 +274,9 @@ struct static_call_key {
 	struct static_call_key STATIC_CALL_KEY(name) = {		\
 		.func = NULL,						\
 	}
+
+#define DEFINE_STATIC_CALL_RET0(name, _func)				\
+	__DEFINE_STATIC_CALL(name, _func, __static_call_return0)
 
 static inline void __static_call_nop(void) { }
 
@@ -292,4 +318,8 @@ static inline int static_call_text_reserved(void *start, void *end)
 
 #endif /* CONFIG_HAVE_STATIC_CALL */
 
+#define DEFINE_STATIC_CALL(name, _func)					\
+	__DEFINE_STATIC_CALL(name, _func, _func)
+
 #endif /* _LINUX_STATIC_CALL_H */
+

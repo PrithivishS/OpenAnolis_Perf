@@ -2759,6 +2759,7 @@ static void intel_pmu_reset(void)
 	}
 
 	local_irq_restore(flags);
+	}
 }
 
 static int handle_pmi_common(struct pt_regs *regs, u64 status)

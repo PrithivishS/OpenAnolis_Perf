@@ -1024,6 +1024,7 @@ static bool split_lock_verify_msr(bool on)
 
 static void __init sld_state_setup(void)
 {
+	#define X86_FEATURE_BUS_LOCK_DETECT	(16*32+24) /* Bus Lock detect */
 	enum split_lock_detect_state state = sld_warn;
 	char arg[20];
 	int i, ret;
